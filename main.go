@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func main() {
@@ -54,9 +55,10 @@ func main() {
 				log.Fatal(err)
 			}
 			hdr := &tar.Header{
-				Name: name,
-				Mode: 0777,
-				Size: info.Size(),
+				Name:    name,
+				Mode:    0777,
+				Size:    info.Size(),
+				ModTime: info.ModTime(),
 			}
 			if err := tw.WriteHeader(hdr); err != nil {
 				log.Fatal(err)
@@ -75,14 +77,31 @@ func main() {
 	// to where the file specifies according to the relative path
 	evilText := []byte("I'm evil!")
 	evilHeader := &tar.Header{
-		Name: "../../../../../../../../../tmp/evil.txt",
-		Mode: 0777,
-		Size: int64(len(evilText)),
+		Name:    "../../../../../../../../../tmp/evil.txt",
+		Mode:    0777,
+		Size:    int64(len(evilText)),
+		ModTime: time.Now(),
 	}
 	if err := tw.WriteHeader(evilHeader); err != nil {
 		log.Fatal(err)
 	}
 	if _, err := tw.Write(evilText); err != nil {
+		log.Fatal(err)
+	}
+
+	// Some archive handlers don't handle reported large file sizes
+	// due to allocating smallint buffers
+	longText := []byte("I'm very small!")
+	longHeader := &tar.Header{
+		Name:    "long_file_is_long.txt",
+		Mode:    0777,
+		Size:    int64(1<<63 - 1),
+		ModTime: time.Now(),
+	}
+	if err := tw.WriteHeader(longHeader); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := tw.Write(longText); err != nil {
 		log.Fatal(err)
 	}
 }
